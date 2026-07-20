@@ -85,8 +85,16 @@ done
 [ "$agent_schema_missing" -eq 0 ] && ok "Codex custom agent 필수 필드 문서화"
 
 # 9) JSON 유효성
+# UTF-8을 명시한다 — Windows 기본 코드페이지(cp949)로 읽으면 한글/em dash가 든
+# 정상 JSON이 UnicodeDecodeError로 오탐된다. 도구가 없으면 조용히 넘기지 않고 warn.
 for j in .claude-plugin/plugin.json .claude-plugin/marketplace.json; do
-  if command -v python3 >/dev/null; then python3 -c "import json;json.load(open('$j'))" 2>/dev/null && ok "JSON 유효: $j" || no "JSON 오류: $j"; fi
+  if command -v jq >/dev/null; then
+    jq -e . "$j" >/dev/null 2>&1 && ok "JSON 유효: $j" || no "JSON 오류: $j"
+  elif command -v python3 >/dev/null; then
+    python3 -c "import json,sys;json.load(open(sys.argv[1],encoding='utf-8'))" "$j" 2>/dev/null && ok "JSON 유효: $j" || no "JSON 오류: $j"
+  else
+    wn "JSON 검사 생략: jq/python3 없음 ($j)"
+  fi
 done
 
 # 10) scripts 문법
