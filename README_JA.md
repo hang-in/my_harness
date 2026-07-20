@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-1.2.0-brightgreen.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.6.3-brightgreen.svg" alt="Version">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/Claude_Code-Plugin-purple.svg" alt="Claude Code Plugin">
   <img src="https://img.shields.io/badge/Runtime-Claude_Code_+_Codex-blueviolet.svg" alt="Dual Runtime">
@@ -246,6 +246,45 @@ myharness は Claude Code エージェントエコシステムの **メタファ
 | [coleam00/Archon](https://github.com/coleam00/Archon) | 決定論的・再現可能な **ランタイム構成** ファクトリー | 同じメタレイヤー、異なるサブ領域。Archon＝ランタイムの決定性、myharness＝チームアーキテクチャ。組み合わせ可能（設計は myharness → デプロイは Archon） |
 | [LangGraph](https://langchain-ai.github.io/langgraph/) | 状態グラフのオーケストレーション、LLM 非依存 | 異なるトラック。LangGraph＝長時間実行・状態復旧、myharness＝Claude Code ネイティブの高速なチーム設計 |
 | [wshobson/agents](https://github.com/wshobson/agents) | サブエージェント／スキルのカタログ | 部品供給 ↔ ファクトリー。カタログから部品を選び、myharness が設計したチームに取り込む |
+
+## コンパニオン: My Harness Web
+
+ビルド済みハーネスを **観測・制御** するローカル Web アプリ。`_workspace/runs/**` のファイル状態を読み、インベントリ・実行・履歴・ドキュメント・drift・評価・ハーネス構成を 1 画面に集約します — CLI では一目で見えないもの。ドメインの一文から **ハーネス全体を自動ビルド** することもできます（ドラフト → 人間レビュー → create）。
+
+- **実行：** `cd harness-ui && npm install && npm start` — ビルド後 `127.0.0.1:5174` を単一オリジンで配信し、ワンタイム（fragment）トークンのリンクでブラウザを開く。開発：`npm run dev`。
+- **機能（wave 別、すべて実装・稼働中 · harness-web 0.9.0）：**
+  - **v0.5 コア** — supervisor · OS アダプター · セキュリティ · ランチャー（certified）。
+  - **v0.6** — F2 プリフィル New Run · F3 projectRoot 編集 · F4 履歴 · F5 ドキュメント/artifact ビューア · F6 観測性 · F7 定義エディタ · F8 Eval ダッシュボード · F9 Docs ソース · F10 ハーネスコンテキスト。
+  - **v0.7–v0.8 マルチランタイム** — F11 ファクトリー保守 · F12 ランタイムアダプターレジストリ · F13 マルチランタイム読み取り · F14 Gemini md 編集 · F15 Codex TOML 編集（strict parse · injection-safe）· F16 トライランタイムスキル同期 · F17 インストールマトリクス（agy 4-state 認証）。claude/codex/gemini ハーネスを 1 つのツールから管理。
+  - **v0.9** — **Eval v1**（4軸 成果物採点、下記参照）+ **バッチ反映（M-y）**：`#/eval` の指摘を複数の定義に AI ドラフトで → レビューキュー → 一括適用、グローバル run ガバナーで上限。各重大マイルストーンは外部監査（codex + agy, no-high 2連続）で収束。
+  - さらに **config-centric 自己評価**（harness_scorecard · 採用段階ゲート）と **ハーネス全体の自動ビルド**。
+- **画面（11 · グループサイドバー）：** Overview · **Harness** / Agents / Skills / Context / History · Docs · Runs / Drift / Ops / Eval · Settings。フロー：ドメイン → Harness 自動ビルド（ドラフト → create）または New Run → run 生成 → 観測（fire-and-observe）。
+- **セキュリティ・範囲：** ローカル 127.0.0.1 のみ · トークン bootstrap → セッション · 読み取り優先（mutating は定義編集・projectRoot・評価 config・ハーネスビルドのみ — ホワイトリスト・アトミック・既定 off ゲート、自動ビルドは no-tools isolated exec + no-auto-apply）。履歴・統計は **UI で実行した run のみ** 反映、ターミナル CLI 実行は v0.7（CLI セッションログ観測）まで範囲外。
+
+### Eval — 各エージェント/スキルをどう採点するか (`#/eval`)
+
+**Eval** 画面は、すべてのエージェント・スキルを **4 軸** + **関係の健全性** で採点します。各軸は 0.0–1.0 で、グレードは加重平均 — **A ≥ 0.90 · B ≥ 0.75 · C ≥ 0.60 · D < 0.60** — に **min-gate** を掛けます：構造的な落第（例：500 行の本文に `references/` が 0 個）はグレードを D で上限とし、良い散文スコアで壊れた構造を洗浄できないようにします。
+
+| 軸 | 何を・なぜ測るか | 重み（機械 + 判定） |
+|------|------------------------|------------------------------|
+| **トリガー** | *description ROI* — description は常時コンテキストコストを正当化するか？(a) 何をするか、(b) 具体的なトリガー状況、(c) 発動して **はいけない** near-miss ケースを明示。 | 0.4 機械 + 0.6 判定 |
+| **構造** | *2 層アーキテクチャ* — 本文は手順のみを保持（≤ 500 行）、条件付き・かさばる素材は `references/` へ移動。 | 0.7 機械 + 0.3 判定 |
+| **誘導** | *次アクションの誘導* — 命令形の語調、「なぜ」の根拠、エージェントの次の動きを明確に導く leading words（曖昧な記述との対比）。 | 0.3 機械 + 0.7 判定 |
+| **剪定** | *削除テスト [中核]* — 「この文を削除したら挙動は変わるか？」いいえ = 埋め草。スコア = `1 − deletion-candidates / total`。**完全性ガード** が必須セクション（トリガー条件 · エラーハンドリング · 中核制約）を過剰剪定から保護。 | 機械 + 保守的な判定 |
+
+**関係の健全性**（4 軸では見えないグラフシグナル）：孤立（未配線の定義）· デッドリンク · カバレッジの欠落 · drift（スキル複製の不一致）— ペナルティとしてスコアに織り込みます。
+
+> **現在の限界 — アドバイザリーとして読んでください。** **静的レイヤー**（機械 · 決定論 · 正規表現/密度）のみ active で、confidence は意図的に低く（0.45–0.5）設定されています。意味判定レイヤー（LLM）とクロス検証は後続です。**自動適用されるものはありません** — findings は定義エディタへ流れ、人間が diff を確認してから保存します（多数の場合はバッチレビューキューで）。
+>
+> 完全な rubric・重み・根拠 → [`docs/harness-eval/design/eval-v1-design.md`](docs/harness-eval/design/eval-v1-design.md)。
+
+**詳細ドキュメント**
+- アプリパッケージ・開発ガイド → [`harness-ui/README.md`](harness-ui/README.md)
+- ドキュメントハブ（設計 · PRD · 受け入れ基準 · 監査履歴） → [`docs/harness-ui/`](docs/harness-ui/README.md)
+- v0.6 設計（実装済み） → [`docs/harness-ui/v0.6/design/design-v0.6.md`](docs/harness-ui/v0.6/design/design-v0.6.md) · PRD → [`docs/harness-ui/v0.6/prd/`](docs/harness-ui/v0.6/prd/)
+- v0.7 企画（CLI セッションログ観測） → [`docs/harness-ui/v0.7/`](docs/harness-ui/v0.7/)
+
+> ファクトリーとは区別されるサブプロジェクト：ファクトリーはハーネスを *生成* し、My Harness Web は 1 つを *運用* します（自動ビルドも可能）。自身のバージョンライン（v0.5/0.6）は上記のファクトリーバージョンとは別です。
 
 ## 要件
 

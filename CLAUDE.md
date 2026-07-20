@@ -1,12 +1,22 @@
 # CLAUDE.md — Claude Code 런타임 진입점
 
-이 저장소는 **하네스 팩토리**다. 도메인 설명을 에이전트 팀, 스킬, 오케스트레이터로 변환하며 Claude Code와 Codex를 함께 지원한다.
+이 저장소는 **하네스 팩토리**다. 도메인 설명을 에이전트 팀, 스킬, 오케스트레이터로 변환하며 Claude Code와 Codex를 함께 지원한다. 세 개의 하네스가 구성되어 있다.
 
-## 하네스 팩토리 사용
+## 하네스 1: myharness (팩토리 정본)
 
-- 새 도메인/프로젝트용 하네스를 생성·확장·점검하려면 `skills/myharness/SKILL.md`의 Phase 0~7 워크플로우를 따른다.
-- 정본은 `skills/myharness/` 한 곳이다. 세부 정책은 해당 스킬이 지시하는 `references/`만 점진적으로 읽는다.
-- 단순 질문이나 한 파일 수정은 불필요하게 멀티 에이전트화하지 않는다.
+**목표:** 도메인 한 문장 → 에이전트 팀 + 스킬을 한국어 우선·슬림으로 찍어내는 메타 스킬.
+
+**트리거:** 새 도메인/프로젝트용 하네스를 생성·확장·점검하려면 `skills/myharness/SKILL.md`의 Phase 0~7 워크플로우를 따른다. 정본은 `skills/myharness/` 한 곳이며, 세부 정책은 해당 스킬이 지시하는 `references/`만 점진적으로 읽는다. 단순 질문이나 한 파일 수정은 불필요하게 멀티 에이전트화하지 않는다.
+
+## 하네스 2: harness-factory-orchestrator (이 레포 유지보수)
+
+**목표:** 팩토리 정책·스크립트·설치·업데이트·듀얼 런타임 문서를 구현·감사·수정하고 회귀를 검증한다.
+
+**트리거:** 팩토리 정본·스크립트·듀얼 런타임 문서를 변경하거나 감사할 때 `.claude/skills/harness-factory-orchestrator/SKILL.md`를 따른다. 단순 1파일 수정은 직접 처리.
+
+**구성:** 에이전트 3(`factory-maintainer`, `runtime-parity-auditor`, `regression-verifier`) + 스킬 2(`harness-factory-orchestrator` 오케스트레이터, `external-review-loop`). 듀얼 런타임으로 `.codex/agents/*.toml`·`.agents/skills/`에도 동시 출력한다. **주 실행 런타임은 Codex다.** Claude Code에서 이 하네스를 열 때는 호환 정의를 사용할 수 있지만, 표준·중대 변경의 외부 독립 리뷰 역할이 우선이다. Codex 러너의 외부 리뷰어는 Claude Code와 agy이며, 같은 러너 엔진인 Codex를 리뷰어로 다시 호출하지 않는다.
+
+> **업스트림과의 차이:** 본가는 같은 역할을 `repo-maintainer`(에이전트 5 + 스킬 3)로 문서화하지만 `.claude/`를 통째로 gitignore하여 **실제 파일이 저장소에 없다**. 이 포크는 `.gitignore` allowlist로 하네스 산출물을 버전 관리하므로, 문서가 가리키는 파일이 클론에도 실재한다.
 
 ## 저장소 유지보수
 
@@ -14,6 +24,7 @@
 - Claude/Codex 동작을 바꾸면 `CLAUDE.md`, `AGENTS.md`, `skills/myharness/references/runtime-adapters.md`를 함께 대조한다.
 - 셸 스크립트 변경 후 `bash skills/myharness/scripts/run-policy-audit.sh`와 관련 회귀 테스트를 실행한다.
 - 빌드된 하네스 업데이트 로직 변경 후 `bash tests/test-harness-update.sh`를 실행한다.
+- CI는 용도별로 분리한다 — `factory-ci.yml`(팩토리 정본, Linux/Windows) / `ci.yml`(harness-ui, 3-OS 매트릭스). 파일명이 겹치면 서로를 덮는다.
 
 ## 런타임 어댑터
 
@@ -21,16 +32,34 @@
 - Codex: `AGENTS.md`, `.agents/skills/`, `.codex/agents/*.toml`, 네이티브 subagents 또는 `codex exec`.
 - 상세 매핑과 제한은 `skills/myharness/references/runtime-adapters.md`를 단일 출처로 사용한다.
 
-## 이 저장소 유지보수 하네스
+## 하네스 3: harness-ui-dev (harness-ui v0.6 기획·개발)
 
-- 팩토리 정책·스크립트·듀얼 런타임 문서를 변경하거나 감사할 때 `.claude/skills/harness-factory-orchestrator/SKILL.md`를 따른다.
-- 주 실행 런타임은 Codex다. Claude Code에서 이 하네스를 열 때는 호환 정의를 사용할 수 있지만, 표준·중대 변경의 외부 독립 리뷰 역할이 우선이다.
-- Codex 러너의 외부 리뷰어는 Claude Code와 agy이며, 같은 러너 엔진인 Codex를 리뷰어로 다시 호출하지 않는다.
+**목표:** `docs/harness-ui/v0.6/design/design-v0.6.md` 설계서를 마일스톤(M7~M13·F2~F8) 단위로 한 번에 하나씩 기획→구현→검증→게이트→커밋.
+
+**트리거:** harness-ui v0.6 기능 구현·마일스톤 착수·후속 작업 요청 시 `harness-ui-dev` 스킬을 사용하라. 단순 1파일 질문은 직접 응답.
+
+**구성:** 에이전트 5(`spec-planner`, `server-builder`, `web-builder`, `qa-verifier`, `security-auditor`) + 스킬 5(`harness-ui-dev` 오케스트레이터·`milestone-spec`·`harness-ui-impl`·`security-review`·`external-review-loop`). 모드: 에이전트 팀(생성-검증 + 마일스톤 파이프라인 하이브리드), 전원 `model: opus`. 게이트: 리스크 등급별(M7/M9/M10=표준·외부리뷰 1회 / M8/M11/M12/M13=중대·단계마다+승인 사다리), 외부 리뷰어 codex+agy(러너 claude 제외). 교리 주입 = `dev-rules`·`tdd-doctrine`(코드 에이전트 실경로). 상세는 각 `.claude/agents/*`, `.claude/skills/*` 단일 출처.
+
+**알려진 정합성 이슈:** F9/F10 편입(2026-07-10) 시 설계서 제목→F4~F10 전체·PRD/page-requirements 헤더 A47-A128·페이지 수 11(as-built 10+Context)로 정정 완료(과거 F7·F8 누락·A47-A71 stale 해소). F8 암호 스택·owner/mode 검증은 코드 미실재(신규 구축·"재사용" 표기 주의). **F10 신규 정의 생성은 F7 재사용 아님(신규 구축)·빌드 초안 exec 메커니즘은 M15 P3 선검증 필수(가정 위 구현 금지).**
 
 ## 변경 이력
-
-| 날짜 | 변경 내용 | 사유 |
-|------|----------|------|
-| 2026-06-27 | 저장소 유지보수 하네스 포인터와 외부 리뷰 역할 추가 | Codex 실행과 Claude Code·agy 독립 검증의 책임 분리 |
-
-릴리스 이력은 `CHANGELOG.md`를 참조한다.
+| 날짜 | 변경 내용 | 대상 | 사유 |
+|------|----------|------|------|
+| 2026-06-08 | 초기 구성 — my-harness 포크 팩토리 + repo-maintainer 유지보수 하네스 | 전체 | 레포 기반 커스텀 하네스 구축 |
+| 2026-06-10 | 외부 리뷰 루프 스킬(codex/gemini 독립 검증) + TDD 교리·개발 규칙 주입 doctrine 추가. my-harness에 품질 게이트 2층·교리 주입·단계 게이트 배선 | skills/external-review-loop, skills/my-harness(+references/tdd-doctrine,dev-rules) | _needs/ 3종 일반화 적용 — 외부 독립 리뷰는 내부 QA와 별개 축 |
+| 2026-06-10 | 코드레벨 리뷰 반영 P1+P2: F1 죽은 포인터→실경로, F2 커밋순서·자율노브(`_workspace/.autonomous`), F3 리스크 등급(경량/표준/중대), F5 결과서-RAG 연속성 | skills/my-harness(+references), skills/external-review-loop | 무차별 게이트 과의식 제거 + 주입 기능 무효 버그 수정 + R2-D2 신규 가치(결과서 RAG) 추출 |
+| 2026-06-15 | 외부 리뷰 성능 리뷰어 `gemini`(deprecated) → `agy`(antigravity CLI, Gemini 모델) 이관. check-review-tools.sh agy 감지·우선, external-review-loop Step1/2 `agy -p --model "Gemini 3.1 Pro (High)" --sandbox --print-timeout` 실행으로 교체, 산문·scorecard source 화이트리스트 sweep. gemini는 legacy 폴백 유지 | skills/myharness(+scripts/check-review-tools.sh, build-scorecard.sh, references/external-review-loop.md 외), README 3종, plugin/marketplace, docs/self-evaluation-system.md | gemini CLI 단종 → agy로 Gemini 연동 지속(스모크 테스트 통과). 정책 감사 PASS |
+| 2026-06-21 | `TeamCreate`/`TeamDelete` 제거 대응(Claude Code v2.1.178). 팀 setup/teardown 단계 폐지 → 팀원은 `Agent` 도구로 직접 spawn, 세션 종료 시 자동 정리. 죽은 도구 가리키던 본문·references·문서 3개국어 갱신(`SendMessage`·`TaskCreate`는 유효 유지) | skills/myharness/SKILL.md(+references/{orchestrator-template,team-examples,runtime-adapters,agent-design-patterns}), README 3종, AGENTS.md, docs/experimental-dependency.md, CHANGELOG | 외부 댓글 제보 → 공식 changelog/agent-teams docs로 검증(Scenario A/C 실현). 정책 감사 PASS |
+| 2026-07-09 | 하네스 3 `harness-ui-dev` 신규 구성 — harness-ui v0.6 기획·개발용. 에이전트 5·스킬 5(오케스트레이터+milestone-spec+harness-ui-impl+security-review+external-review-loop) 생성, 교리(dev-rules·tdd-doctrine) 오케스트레이터 references/로 복사·코드 에이전트 실경로 주입, 리스크 등급별 게이트(중대 M8/M11/M12/M13·표준 M7/M9/M10), 외부 리뷰어 codex+agy 점검(러너 claude 제외·풀 가용). 설계서 코드근거 12/13 정합 검증·재사용 오표기(F8 crypto·owner/mode 미실재) 규약에 명시 | `.claude/agents/{spec-planner,server-builder,web-builder,qa-verifier,security-auditor}.md`, `.claude/skills/{harness-ui-dev,milestone-spec,harness-ui-impl,security-review,external-review-loop}/` | 설계서 v0.6 추가구현 착수를 위한 기획+개발 하네스 요청(Claude 전용·5명 분리·리스크 등급별 게이트) |
+| 2026-07-10 | 실사용 피드백 후속 기획 — **F9(Docs 소스 다중설정·M14·A113-A120)·F10(하네스 컨텍스트 관리+에이전트/스킬 빌더·M15·A121-A128)** 설계서 편입 + 작업계획서 2건 작성. spec-planner가 설계/계획 초안·오케스트레이터가 surgical 편입. 외부감사 **4라운드**(codex+agy) → **양 엔진 HIGH 0** 수렴: R1 HB8 동시성·`.claude/agents·skills` 정밀 화이트리스트·API경로 통일·`deniedContextPath` 독립, R2 HB8/화이트리스트 전파, R3 신규 docsTree 리스팅 TOCTOU·HB 번호 1:1 정렬, R4 clean. 확정 3결정(다중소스·폼AI초안→승인→F7저장·쓰기=`.claude/agents·skills`+신규만). **추가: F10 멀티런타임 읽기 확장**(사용자 요청 claude+codex+antigravity 자동수집·뷰) — agy 조사 확정(스킬=`.agents/skills/**/SKILL.md` Codex 공유·동일 포맷·규칙=GEMINI.md/AGENTS.md), 읽기=3런타임(`.claude`·`.codex`·`.agents` 3 dot-dir 정밀+CLAUDE/AGENTS/GEMINI.md·런타임 배지)·편집=Claude만(Codex/agy 409 edit-v0.7)·A129/A130 신설(전체 A47-A130·84개). 외부감사 R5~R6 → 양 엔진 HIGH 0(경로탈출/홈노출/쓰기경계 견고·plugins/hooks/.claude-plugin=v0.7 비목표 명시). **전체 설계서 홀리스틱 감사 R7~R9**(전 기능 F4~F10·I1~I8·A47~A130·교차기능·config 4 writer·경로안전 3종 병렬): R7 F10 트리 OOM/node_modules(HR7)·F9 `.`루트노출(DS1)·config F9편입 수정, R8~R9 **2회 연속 양 엔진 HIGH 0**(A47~A130 unique 84·결번0·"즉시 구현 진입 가능" agy 판정). working_history 결과서 의무를 M14/M15 계획서에 명시 | `docs/harness-ui/v0.6/design/design-v0.6.md`(§F9·§F10·A113-A128), `prd/{v0.6-prd,page-requirements}.md`, `todo/M14-F9-docs-sources.md`·`todo/M15-F10-harness-context.md` | 원격 UI 실사용 후 사용자 요청(Docs 소스 설정화 + 하네스 컨텍스트 전용 페이지·빌더). 구현(M14/M15)은 별도 착수 |
+| 2026-07-10 | **M14(F9 Docs 소스 설정)·M15(F10 하네스 컨텍스트 관리+빌더) 구현 완료** — `harness-ui-dev` 하네스(spec/server/web-builder·qa/security-auditor)로 TDD 구현→내부 QA·보안→외부감사(codex+agy)→체크·결과서·커밋. **M14**: config additive per-leaf·docssources DS1~DS8·docsTree walk pre/post TOCTOU·소스인지 API·Settings/Docs UI. 외부감사 R1~R5(R4·R5 2회 연속 HIGH 0). **M15**: 멀티런타임 읽기 HR1~HR7(독립 deniedContextPath·3 dot-dir·node_modules 차단)·편집 Claude만(Codex/agy 409)·빌드 초안 HB1~HB8·신규생성·Context 11번째 화면. 외부감사 R1~R8(R7·R8 2회 연속 HIGH 0·빌드 exec 샌드박스 6회 심화→실측 `--tools ""` deny-all+환경격리). vitest 874 pass/1 skip. 커밋 2건(0be8763 M14·f2720b2 M15)·push 대기(`.autonomous-push` 미설정) | `harness-ui/src/**`·`test/**`, `docs/harness-ui/v0.6/todo/M14·M15`·`working_history/M14·M15` | `/goal` 두 계획서 전 작업 구현·마일스톤마다 외부감사 ≥2회 HIGH 0 |
+| 2026-07-10 | **자기평가(loop_scorecard) 누락 발견·복구·배선.** M14/M15 외부감사(~22R)를 raw `audit.sh`+산문 판정으로만 돌려 `verdicts.json`·`build-scorecard.sh`(측정 꼬리)를 건너뜀 → scorecard·summary.jsonl 0건(F8 Eval 공백). **복구:** 3 stage(f9f10-design·m14-code-f9·m15-code-f10) verdicts.json 소급 재구성→scorecard+summary.jsonl 생성(alignment 1.0/0.8/1.0·regression_catch 0.71/1.0/3.0). **배선:** 오케스트레이터가 놓친 "루프 종료→verdicts.json→build-scorecard→summary.jsonl" 단계를 harness-ui-dev/SKILL.md(로컬)·**orchestrator-template.md(팩토리 정본·전파)**에 명시. 근본원인=external-review-loop 정본엔 있으나 오케스트레이터 본문·템플릿이 측정 꼬리를 안 이어받음(Phase 7 진화 트리거: 오케스트레이터 수동 우회 관찰) | `skills/myharness/references/orchestrator-template.md`, (로컬)`.claude/skills/harness-ui-dev/SKILL.md`·`_workspace/evals/external-review/*` | 사용자 지적("자기평가가 왜 한번도 실행 안 됐나") |
+| 2026-07-05 | D4 산출물 방치 버그 강제장치 풀 배선. `check-artifacts.sh`(결과서 docs/ 기록+`## 다음 단계 참조` grep 검증) + 생성 하네스 `pre-commit` hook(런타임 물리 차단, 프롬프트 아님). SKILL 커밋순서·체크리스트에 배선(500줄 캡 유지), orchestrator-template hook 설치 절차, harness-update 번들 화이트리스트, factory-map ✅ active(T2-lite 구조는 외부감사 기각), skeleton 교훈→개선 섹션. grep latent 버그(번호 접두 heading false-fail) 수정. L2 mock A/B 6/6 PASS | skills/myharness/SKILL.md·scripts/{check-artifacts,harness-update}.sh·references/{orchestrator-template,factory-map,templates/working-history-skeleton}, docs/myharness/d4-t2lite-forcing-design.md | 실사용 산출물 `_workspace` 방치·소멸 → 강제장치 부재가 근본원인(외부감사 수렴). 정책 감사 PASS |
+| 2026-07-11 | repo-maintainer 확장 — `stabilizer` 에이전트 신설(팩토리 고도화·안정화·회귀 방지 게이트). 정본 변경(중대 blast-radius)에 정책감사(`run-policy-audit.sh`)·외부리뷰(`external-review-loop`)·회귀 드라이런 3층 게이트 배선. skill-maintainer→stabilizer→repo-qa 흐름·리스크 등급 조절 | .claude/agents/stabilizer.md, .claude/skills/repo-maintainer/SKILL.md, CLAUDE.md | 팩토리 정본 변경이 모든 생성 하네스에 전파되나 외부리뷰·정책감사 게이트 미배선이었음(내부 QA만) → 안정화 갭 |
+| 2026-07-12 | **릴리스 v1.5.0** — PR #5(harness-ui v0.5~v0.6·Mintlify·자기평가 config-centric·#/build 재구성·C 하네스 자동빌드) main 머지 후 릴리스. C 자동빌드 외부감사 R1~R7 수렴(R6·R7 양엔진 no-high). CI 환경/Windows 플랫폼 테스트 강건화로 3-OS(ubuntu/macos/windows×node 20/22) 전건 green. 버전 5곳 정합·정책 감사 PASS·GitHub Release 발행 | `.claude-plugin/{plugin,marketplace}.json`, README×3, CHANGELOG.md, harness-ui/**, skills/myharness/{SKILL.md,references/external-review-loop.md,scripts/emit-loop-scorecard.sh} | 사용자 릴리스 요청(v1.5.0) |
+| 2026-07-12 | **릴리스 v1.5.1** — 하네스웹 **F11 팩토리(myharness) 유지관리** 신규(`#/build` 상태 카드·설치/업데이트/제거·방식별 상태·게이트 fail-closed) + **postinstall 자동 설치**(심링크·marketplace 감지 스킵·백업·원복). 상태 카드로 build에 병합(모드 스위치 아님·build 무관 동작). 외부감사 codex+agy 보안 R1~R6(HOME 쓰기·심링크·백업 원복)·UX R1~R3 양엔진 no-high 수렴. factory 16 tests·전체 986 pass·3-OS CI. 버전 5곳 정합·정책 감사 PASS·GitHub Release 발행 | `harness-ui/{src,scripts,test}/**`, `.claude-plugin/*`, README×3, CHANGELOG.md | 사용자 요청(F11 팩토리 유지관리 + v1.5.1 릴리스) |
+| 2026-07-14 | **harness-ui v0.8 M-a~M-f 전 마일스톤 구현 완료**(멀티런타임 통합관리 — claude/codex/gemini). `harness-ui-dev` 하네스로 TDD→내부 QA→외부감사(codex+agy·러너 제외)→결과서→커밋. **M-a** F12 런타임 어댑터 레지스트리(읽기/분류 SSOT). **선검증** 경로 사실성 dogfood(채널 2·TOML lib 부재 확인). **M-b** F13 멀티런타임 읽기·공용/서브 스킬 역인덱스. **M-c** F14 Claude+Gemini md 편집(쓰기경계). **M-d** F17 설치 매트릭스(레지스트리 채널·벌크·agy 4-state 인증). **M-e** F15 Codex TOML 편집(@iarna/toml strict parse + semantic diff limited-edit·주석 verbatim 보존·injection 방어·R1~R6 수렴). **M-f** F16 트리런타임 스킬 동기((dev,ino) 분류·안전 다타깃·R1~R4 수렴). 각 중대 마일스톤 외부감사 no-high 2연속. vitest 1060 pass·정책 감사 PASS. **주의:** 세션 중 작업트리 리버트 2회 관측 → `_workspace` 캡처 diff `git apply` 복원·수렴 즉시 커밋으로 보호. **push 대기**(`.autonomous-push` 미설정)·릴리스 별도 요청 시 | `harness-ui/src/**`·`test/**`, `docs/harness-ui/v0.8/working_history/*` | `/goal` v0.8-plan 전 작업 안정적 완료·각 단계 외부감사 |
+| 2026-07-17 | **릴리스 v1.6.3** — M-y 지적 배치 반영(M-y0 거버너·M-y1 배치 API·M-y2 검토 큐·M-y3 일괄 적용+E2E) + "AI로 반영" 버튼 무응답 근본수정(initGovernance 를 실 진입점 start.ts 에 배선) + **Windows 런처 견고화**(resolveBin 타임아웃 플랫폼별 15s/5s — `where.exe` 5s 초과로 npm 을 "없음" 오판하던 CI windows node20 실패 원인 제거) + v0.8 계획서 §9 마감. `repo-maintainer` 팀(release-manager→doc-syncer→repo-qa)으로 버전 5곳 정합·CHANGELOG·뱃지 동기. vitest 1172 pass·3-OS CI·정책 감사 PASS. 1.6.1/1.6.2 는 건너뜀(사용자 지정) | `.claude-plugin/{plugin,marketplace}.json`, README×3, CHANGELOG.md, `harness-ui/src/server/lib/exec.ts`, CLAUDE.md | 사용자 릴리스 요청(v1.6.3) |
+| 2026-07-16 | **harness-eval M-y(배치 지적 반영) 전 마일스톤 구현 완료** — #/eval 지적을 여러 정의에 AI 초안 배치 생성→검토 큐→일괄 적용. `harness-ui-dev` 하네스·TDD·외부감사(codex+agy)·결과서·측정 꼬리(loop_scorecard)·커밋. **M-y0** 전역 run 거버너(K 슬롯·O_EXCL claim·leaseId fencing·reap·crash 복구) — 외부감사 **R1~R30**(동시성/수명주기 22 confirmed·status RMW 락·terminal SSOT·verifyLeader/isTreeDead 정합·finalize drain). **M-y1** 배치 API(큐 in-flight=batch.json status 파생·전역+배치 mutex·서버 sweeper·prune·newRunId 랜덤화) R1~R6 13 confirmed. **M-y2** 웹 검토 큐(선택·비용 합의·diff 적용=F7 PUT·초안 baseHash 낙관적 동시성) R1~R3 7 confirmed. **M-y3** 일괄 적용+결정적 E2E(무손실·stale 409·백업/롤백) R1~R3 5 confirmed. 각 중대 마일스톤 no-high 2연속. vitest **1172 pass**. **부수 긴급 수정:** "AI로 반영" 무응답 근본원인 — M-y0 `initGovernance` 를 index.ts isMain 에만 배선했으나 실 진입점은 start.ts → 거버너 reap 미가동·stale 슬롯이 K 영구 잠금. startServer 에 배선(+배치 sweep 훅)·라이브 unblock. **push 대기**(`.autonomous-push` 미설정) | `harness-ui/src/server/adapters/{run-governor,governed,remediate-batch}.ts`·`supervisor/*`·`src/web/{api,screens}.tsx`·`test/**`, `docs/harness-eval/working_history/M-y0~M-y3` | `/goal` M-y-batch-remediation 계획서 전 작업·마일스톤마다 외부감사 no-high 2연속 |
+| 2026-06-27 | 저장소 유지보수 하네스 자체 적용 — `factory-maintainer`·`runtime-parity-auditor`·`regression-verifier` 3에이전트 + `harness-factory-orchestrator`·`external-review-loop` 2스킬을 듀얼 런타임(`.claude`/`.codex`/`.agents`)으로 생성. `.gitignore` 를 `.claude/` 전체 무시에서 하네스 산출물 allowlist 로 전환해 문서가 가리키는 파일이 클론에도 실재하도록 함 | `.claude/{agents,skills}/**`, `.codex/agents/*.toml`, `.agents/skills/**`, `.gitignore`, `AGENTS.md`, `CLAUDE.md` | Codex 실행과 Claude Code·agy 독립 검증의 책임 분리 |
+| 2026-07-20 | 본가 v1.6.3 병합 + Windows 정합성 수정 — `run-policy-audit.sh` JSON 검사 UTF-8 명시(cp949/cp932/cp1252 전부에서 정상 JSON 오탐)·도구 부재 시 조용한 건너뜀을 WARN 으로 승격. CI 파일명 충돌 해소(`factory-ci.yml` 분리·path 스코프). `harness-update.sh` 는 본가판(list_managed 단일 출처·temp 정리 보강) 채택 | `skills/myharness/scripts/run-policy-audit.sh`, `.github/workflows/factory-ci.yml`, `CHANGELOG.md`, `CLAUDE.md` | 포크가 앞선 Windows 하드닝과 본가가 앞선 팩토리 개선을 양쪽 다 보존 |

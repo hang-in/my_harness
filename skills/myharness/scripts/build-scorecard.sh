@@ -21,7 +21,8 @@ mkdir -p "$(dirname "$OUT")"   # 깊은 출력 경로 보장(없으면 리다이
 tok=0
 [ -n "$T" ] && [ -f "$T" ] && tok="$(jq -r '.total_tokens // 0' "$T" 2>/dev/null || echo 0)"
 
-jq -n --slurpfile v "$V" --argjson tok "$tok" '
+RUN_ID="$(basename "$(dirname "$OUT")")"   # OUT=.../{stage}/{run_id}/scorecard.json → run_id
+jq -n --slurpfile v "$V" --argjson tok "$tok" --arg run_id "$RUN_ID" '
   ($v[0]) as $d | ($d.issues // []) as $i |
   ($i | map(select(.verdict=="confirmed")) | length) as $c |
   ($i | map(select(.verdict=="partial"))   | length) as $p |
@@ -37,7 +38,7 @@ jq -n --slurpfile v "$V" --argjson tok "$tok" '
   # 태깅 무결성: round>1 confirmed/partial 중 source 누락/비허용 → 경고(조용한 0 방지)
   ($i | map(select(.round>1 and (.verdict=="confirmed" or .verdict=="partial") and ((.source//"")|IN("re-review","codex","claude","agy","gemini","orchestrator")|not))) | length) as $bad_src |
   {
-    schema_version:"1", loop:($d.loop//"external-review"), stage_id:($d.stage_id//"?"),
+    schema_version:"1", loop:($d.loop//"external-review"), stage_id:($d.stage_id//"?"), run_id:$run_id,
     rounds:($d.rounds // ($i|map(.round)|max // 1)),
     termination_reason:($d.termination_reason//"unknown"),
     verdict_counts:{confirmed:$c,partial:$p,deferred:$df,rejected:$r,duplicate:$dup},
@@ -46,6 +47,8 @@ jq -n --slurpfile v "$V" --argjson tok "$tok" '
     deferred_rate:   (if $adj>0 then ($df/$adj) else null end),
     duplicate_rate:  (if $adj>0 then ($dup/$adj) else null end),
     regression_catch_rate: (if $reg_den>0 then ($reg_num/$reg_den) else null end),
+    missed_defect_rate: null,
+    overturned_rejection_rate: null,
     cost_per_run_tokens:$tok,
     cost_per_confirmed: (if $c>0 then ($tok/$c) else null end),
     diff_lines:($d.diff_lines//null), risk_level:($d.risk_level//null),
@@ -54,8 +57,9 @@ jq -n --slurpfile v "$V" --argjson tok "$tok" '
   }' > "$OUT"
 echo "scorecard → $OUT"
 
-# 집계: stage-level summary.jsonl에 원자적 append(flock — 병렬 경합 방지). 실패는 노출.
-SUM="$(dirname "$OUT")/../summary.jsonl"
+# 집계: loop-level summary.jsonl에 원자적 append(flock — 병렬 경합 방지). 실패는 노출.
+#   OUT=.../{loop}/{stage_id}/{run_id}/scorecard.json → ../../ = {loop}/summary.jsonl (doc·Phase 0/7 리더와 동일 경로).
+SUM="$(dirname "$OUT")/../../summary.jsonl"
 LINE="$(jq -c '{stage_id,rounds,termination_reason,alignment_score,regression_catch_rate,cost_per_run_tokens,warnings}' "$OUT")"
 if command -v flock >/dev/null; then
   flock "$SUM.lock" -c "printf '%s\n' '$LINE' >> '$SUM'" || echo "WARN: summary append 실패" >&2

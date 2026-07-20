@@ -1,0 +1,5 @@
+{"seq":0,"ts":"2026-07-09T10:00:00+09:00","level":"info","agent":null,"skill":null,"phase":"init","event":"run_started","message":"start","usage":null}
+{"seq":1,"ts":"2026-07-09T10:00:05+09:00","level":"info","agent":"builder","skill":"external-review-loop","phase":"plan","event":"skill_invoked","message":"review loop","usage":null}
+{"seq":2,"ts":"2026-07-09T10:00:20+09:00","level":"info","agent":"builder","skill":null,"phase":"build","event":"token_count","message":"no usage emitted","usage":null}
+{"seq":3,"ts":"2026-07-09T10:00:40+09:00","level":"info","agent":"reviewer","skill":null,"phase":"review","event":"review_round","message":"round 1","usage":null}
+{"seq":4,"ts":"2026-07-09T10:01:00+09:00","level":"info","agent":"builder","skill":null,"phase":"done","event":"run_completed","message":"ok","usage":null}

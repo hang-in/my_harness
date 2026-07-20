@@ -110,7 +110,7 @@ description: "하네스(에이전트 팀 + 스킬)를 구성·확장·점검하�
 
 **팀 재구성:** 에이전트 팀은 세션당 한 팀만 활성화할 수 있지만, Phase 간에 팀을 해체하고 새 팀을 구성할 수 있다. 파이프라인 패턴처럼 Phase별로 다른 전문가 조합이 필요하면, 이전 팀의 산출물을 파일로 저장한 뒤 팀을 정리하고 새 팀을 생성한다.
 
-각 에이전트를 `프로젝트/.claude/agents/{name}.md`에 정의한다. 필수 섹션: 핵심 역할, 작업 원칙, 입력/출력 프로토콜, 에러 핸들링, 협업. 에이전트 팀 모드에서는 `## 팀 통신 프로토콜` 섹션을 추가하여 메시지 수신/발신 대상과 작업 요청 범위를 명시한다.
+각 에이전트를 `프로젝트/.claude/agents/{name}.md`에 정의한다. 필수 섹션: 핵심 역할, 작업 원칙, 입력/출력 프로토콜, 에러 핸들링, 협업. 에이전트 팀 모드에서는 `## 팀 통신 프로토콜` 섹션을 추가하여 메시지 수신/발신 대상과 작업 요청 범위를 명시한다. **frontmatter 연결 계약(구성 자기평가 선행조건): 에이전트에 `skills: [사용스킬…]`(미선언=link_unknown·빈배열=명시 무연결), 오케스트레이터 스킬에 `orchestrates: [에이전트…]` 배열 필수 — `references/harness-scorecard.md`.**
 
 > 정의 템플릿과 실제 파일 전문은 `references/agent-design-patterns.md`의 "에이전트 정의 구조" + `references/team-examples.md` 참조.
 
@@ -202,7 +202,7 @@ cloud-deploy/
 
 코드/설계 도메인이어도 **러너 제외 외부 리뷰어가 있을 때만** 만든다(작동 불가 스킬 방지). 판단 기준은 `AVAILABLE`이 아니라 **`REVIEWERS`**(러너 엔진 제외분) — 러너만 설치된 환경은 `AVAILABLE`은 1개여도 `REVIEWERS: none`이라 외부 리뷰 불가.
 1. **점검:** `bash skills/myharness/scripts/check-review-tools.sh {러너}`(생성 런타임의 claude|codex 명시) → 끝줄 `REVIEWERS:`. **none**=스킬 생성 안 함(내부 QA만, 보고서·CLAUDE.md에 "외부 리뷰어 없음 생략" 명시) / **하나만**=그 도구만 쓰는 저하 모드 생성 / **둘 다**=풀 생성.
-2. **생성:** `references/external-review-loop.md`(방법론 겸 템플릿)를 타겟 `.claude/skills/external-review-loop/SKILL.md`(듀얼 런타임이면 `.agents/skills/external-review-loop/`에도)로 생성(frontmatter 포함). `check-review-tools.sh`·`build-scorecard.sh`를 그 스킬 `scripts/`로 복사(런타임 폴백·scorecard용).
+2. **생성:** `references/external-review-loop.md`(방법론 겸 템플릿)를 타겟 `.claude/skills/external-review-loop/SKILL.md`(듀얼 런타임이면 `.agents/skills/external-review-loop/`에도)로 생성(frontmatter 포함). `check-review-tools.sh`·`build-scorecard.sh`·`emit-loop-scorecard.sh`를 그 스킬 `scripts/`로 복사(런타임 폴백·scorecard 측정 꼬리·raw 감사 우회 시에도 통계 발행).
 3. 오케스트레이터가 단계 마감 시 호출(5-6). 스킬 없으면 게이트는 내부 QA로 축소. 비코드 도메인은 점검 없이 생략.
 
 ### Phase 5: 통합 및 오케스트레이션
@@ -321,7 +321,7 @@ Phase 2-1에서 선택한 실행 모드에 따라 오케스트레이터 패턴�
 
 **단계 마감 게이트(표준·중대):** 오케스트레이터가 `external-review-loop` 스킬 호출 — **라운드 반복 루프**(러너 제외 리뷰어 병렬 — Claude면 codex+agy, Codex면 claude+agy → 판정 → 확인분만 TDD 수정·게이트 → 수정 diff 재리뷰). **loop-until-dry**(신규 확인 0건 K회 연속) 또는 MAX_ROUNDS에서 종료. 판정 원장(`verdicts.json`)으로 신규만 판정. 근거 수집은 위임 가능하나 **최종 확정은 오케스트레이터 비위임**. 상세: `references/external-review-loop.md`.
 
-**커밋 순서(순환 제거):** 리뷰→판정→수정→게이트 PASS → **승인 관문** → 단일 커밋. (리뷰는 커밋 *전* 작업트리/스테이지 대상 — "커밋 직후 리뷰" 아님.)
+**커밋 순서(순환 제거):** 리뷰→판정→수정→게이트 PASS → **`check-artifacts.sh`(결과서 docs/ 기록 검증 — missing이면 차단)** → **승인 관문** → 단일 커밋. (리뷰는 커밋 *전* 작업트리/스테이지 대상.) 결과서 방치는 프롬프트로 못 막음(스킵·할루시) → 생성 하네스는 이 검증을 **git `pre-commit` hook**에 배선(런타임 물리 차단). 상세: `references/orchestrator-template.md` 문서 체계.
 - 승인 관문 기본: 사용자 승인 대기.
 - **자율 노브:** `프로젝트/_workspace/.autonomous` 마커(또는 "자율로"·"승인 생략" 발화) 시 승인 자동 통과 → 커밋. 권한모드(bypassPermissions)는 스킬이 못 읽으므로 마커/발화로 명시. 마커 ON이어도 외부리뷰·판정·게이트는 그대로(인간 승인 한 스텝만 생략).
 - **push는 자율이어도 기본 대기**(외부 송출·되돌리기 어려움) — `_workspace/.autonomous-push` 마커 시만 자동.
@@ -335,7 +335,7 @@ Phase 2-1에서 선택한 실행 모드에 따라 오케스트레이터 패턴�
 #### 6-1. 구조 검증
 
 - 모든 에이전트 파일이 올바른 위치에 있는지 확인
-- 스킬의 frontmatter(name, description) 검증
+- frontmatter 검증: 스킬(name, description)·**에이전트 `skills:` 배열·오케스트레이터 `orchestrates:` 배열**(연결 계약·scalar/누락 시 incomplete_def·link_unknown 오탐)
 - 에이전트 간 참조 일관성 확인
 - 커맨드가 생성되지 않았는지 확인
 
@@ -436,7 +436,7 @@ Phase 2-1에서 선택한 실행 모드에 따라 오케스트레이터 패턴�
 - 같은 유형의 피드백이 2회 이상 반복될 때
 - 에이전트가 반복적으로 실패하는 패턴이 발견될 때
 - 사용자가 오케스트레이터를 우회하여 수동으로 작업하는 것이 관찰될 때
-- **(수치 기반 — 데이터 충분 시)** 누적 `loop_scorecard.json` 추세가 악화: `alignment_score` 롤링 하락 3회 연속, `rounds_normalized` 상승 추세, `overturned_rejection_rate` 임계 초과, 동일 경계 N회 실패. **단, 자동 적용 금지 — 제안만 + 승인 게이트**, `min_adjudicated_claims≥20` 전 발화 금지(플래핑·Goodhart 방지). 상세: `references/loop-self-eval.md`.
+- **(구성 자기평가 — 주축)** `harness_scorecard`(구성 건강도·`references/harness-scorecard.md`) 악화 시 **구성 개선 제안**. 2 cadence: 무거운 정적 재계산=구성변경 시점(Phase 0/7-5), 얇은 인터셉터=run 종료 시 `loop_scorecard` 추세만 검사→스냅샷 config_hash 대조(일치 시 제안·불일치 시 정적 감사 요청만). 보조(`loop_ref`): `alignment_score` 3연속 하락·`rounds` 상승. **자동 적용 금지 — 제안+승인**, adjudicated≥30 전 발화 금지. 지표표: `references/loop-self-eval.md`.
 
 #### 7-5. 운영/유지보수 워크플로우
 
@@ -470,7 +470,7 @@ Phase 2-1에서 선택한 실행 모드에 따라 오케스트레이터 패턴�
 
 생성 완료 후 확인:
 
-- [ ] `.claude/agents/`(정의 파일, 빌트인 타입도 필수) + `.claude/skills/`(SKILL.md + references/) 생성
+- [ ] `.claude/agents/`(정의 파일·**`skills:` 배열 계약**) + `.claude/skills/`(SKILL.md + references/·오케스트레이터는 **`orchestrates:` 배열**) 생성
 - [ ] 오케스트레이터 스킬 1개 (데이터 흐름 + 에러 핸들링 + 테스트 시나리오 포함)
 - [ ] 실행 모드 명시 (에이전트 팀 / 서브 에이전트 / 하이브리드 중 선택, 하이브리드면 Phase별 모드 기재)
 - [ ] 모델 라우팅 — 고추론만 `opus`, 단순 작업은 경량 모델 (비용 통제) / Codex는 런타임 모델
@@ -486,7 +486,7 @@ Phase 2-1에서 선택한 실행 모드에 따라 오케스트레이터 패턴�
 - [ ] (코드/설계) 코드/수정 에이전트에 dev-rules·tdd-doctrine **타겟상대 실경로** 주입 (`[[ ]]` 금지) + 교리 파일 타겟 복사 (Phase 3-1) + 생성 직후 `harness-update.sh manifest`로 기준선 기록(후속 `update` 사용자 수정 감지용, 7-7)
 - [ ] (코드/설계) **외부 리뷰어 연동 점검**(`check-review-tools.sh` — 러너 제외 `REVIEWERS:`) 후 `external-review-loop` 스킬 생성 — 도구 전무면 생략(불필요 스킬 방지) + 단계 게이트 배선, 단계마다 리스크 등급 판정 (Phase 4-6, 5-6)
 - [ ] (코드/설계) 커밋 순서·자율 노브(`_workspace/.autonomous`)·push 별도 게이트 반영
-- [ ] 결과서에 `## 다음 단계 참조` 블록 (연속성)
+- [ ] 결과서 `docs/{project}/working_history/` 기록 + `## 다음 단계 참조` 블록 + `check-artifacts.sh` PASS (생성 하네스 `pre-commit` hook 배선 권장 — 방치 물리 차단)
 - [ ] **듀얼 런타임:** 루트 `AGENTS.md` + 스킬 `.agents/skills/` 출력, 오케스트레이터에 어댑터(Agent 팀원 spawn / Codex subagents·subprocess) 명시 (`references/runtime-adapters.md`)
 
 ## 참고
@@ -494,7 +494,7 @@ Phase 2-1에서 선택한 실행 모드에 따라 오케스트레이터 패턴�
 - **항법(먼저 읽기)**: `references/factory-map.md` — 최소 경로(도메인/리스크별 무엇을 쓰나)·구현 상태·루프 개요 지도. 단순 하네스 과부담 방지.
 - 하네스 패턴: `references/agent-design-patterns.md` · 예시(파일 전문): `references/team-examples.md` · 오케스트레이터 템플릿: `references/orchestrator-template.md`
 - **스킬 작성/테스트/QA 가이드**: `references/skill-writing-guide.md`(작성 패턴·스키마) · `references/skill-testing-guide.md`(테스트/평가/반복) · `references/qa-agent-guide.md`(QA 포함 시 — 통합 정합성·경계면 버그 패턴·정의 템플릿, 실 프로젝트 7버그 기반).
-- **루프 평가/개선**: `references/loop-self-eval.md`(루프 scorecard·alignment·단계적 — 측정만→수동→제안→자동) + `references/self-improvement-loop.md`(생성 산출물 벤치→holdout→승인→채택, 설계만·MVP 단계적·자동 적용 아님). 용어: `loop_scorecard`(루프) vs `artifact_benchmark`(산출물).
+- **자기평가**: **주축** `references/harness-scorecard.md`(하네스 구성 상태 개선·계층A 정적 SSOT·frontmatter 연결 계약·2 cadence·분류 orphan/link_unknown/dead_link) + 보조 `references/loop-self-eval.md`(루프 효율 `loop_ref`·alignment·단계적) + `references/self-improvement-loop.md`(산출물 벤치·설계만). 용어: `harness_scorecard`(구성·주축) ⊃ `loop_scorecard`(루프) · `artifact_benchmark`(산출물).
 - **외부 리뷰 루프**: `references/external-review-loop.md` — 외부 독립 AI(러너 엔진 제외) 검증 단계 게이트. 방법론 겸 생성 템플릿. **루프 제어(loop-until-dry·MAX_ROUNDS·라운드 카운터)·판정 원장(verdicts.json, dedup vs seen)·수정본 재리뷰·근거수집 위임/확정 비위임**·기각 사유표·커밋 순서·자율 노브 포함.
 - **TDD 교리 / 개발 규칙 / 하네스 업데이트**: `references/tdd-doctrine.md`, `references/dev-rules.md`(작업 원칙 주입), `references/harness-update.md`(빌드 산출물 재전파·사용자 수정 보존).
 - **런타임 어댑터**: `references/runtime-adapters.md` — Claude Code/Codex 듀얼 런타임 설계. 진입점·오케스트레이션 매핑, AGENTS.md·`.agents/skills/` 생성, 설치(Codex 공식 docs 검증).

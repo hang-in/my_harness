@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-1.2.0-brightgreen.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.6.3-brightgreen.svg" alt="Version">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/Claude_Code-Plugin-purple.svg" alt="Claude Code Plugin">
   <img src="https://img.shields.io/badge/Runtime-Claude_Code_+_Codex-blueviolet.svg" alt="Dual Runtime">
@@ -248,6 +248,45 @@ myharness lives at the **meta-factory** layer of the Claude Code agent ecosystem
 | [coleam00/Archon](https://github.com/coleam00/Archon) | A factory for deterministic, reproducible **runtime configuration** | Same meta layer, different sub-area. Archon = runtime determinism, myharness = team architecture. Combinable (design with myharness → deploy with Archon) |
 | [LangGraph](https://langchain-ai.github.io/langgraph/) | State-graph orchestration, LLM-agnostic | A different track. LangGraph = long-running & state recovery, myharness = fast, Claude Code-native team design |
 | [wshobson/agents](https://github.com/wshobson/agents) | A catalog of subagents/skills | Parts supply ↔ factory. Pick parts from the catalog and absorb them into the team myharness designs |
+
+## Companion: My Harness Web
+
+A local web app that **observes and controls** a built harness. It reads the file state under `_workspace/runs/**` and surfaces inventory, executions, history, documents, drift, evaluation, and harness composition on one screen — the things the CLI can't show at a glance. It also **auto-builds a whole harness** from a single domain sentence (draft → human review → create).
+
+- **Run:** `cd harness-ui && npm install && npm start` — builds, serves a single origin on `127.0.0.1:5174`, and opens the browser with a one-time (fragment) token. Dev mode: `npm run dev`.
+- **Features (by wave, all implemented & live · harness-web 0.9.0):**
+  - **v0.5 core** — supervisor · OS adapters · security · launcher (certified).
+  - **v0.6** — F2 prefill New Run · F3 projectRoot edit · F4 history · F5 doc/artifact viewer · F6 observability · F7 definition editor · F8 Eval dashboard · F9 Docs sources · F10 harness context.
+  - **v0.7–v0.8 multi-runtime** — F11 factory maintenance · F12 runtime-adapter registry · F13 multi-runtime read · F14 Gemini md edit · F15 Codex TOML edit (strict parse · injection-safe) · F16 tri-runtime skill sync · F17 install matrix (agy 4-state auth). Manage claude/codex/gemini harnesses from one tool.
+  - **v0.9** — **Eval v1** (4-axis artifact scoring, see below) + **batch remediation (M-y)**: turn `#/eval` findings into AI drafts across many definitions → review queue → bulk apply, capped by a global run governor. Each critical milestone converged under external audit (codex + agy, no-high twice).
+  - Plus **config-centric self-evaluation** (harness_scorecard, adoption-stage gate) and **whole-harness auto-build**.
+- **Screens (11, grouped sidebar):** Overview · **Harness** / Agents / Skills / Context / History · Docs · Runs / Drift / Ops / Eval · Settings. Flow: domain → Harness auto-build (draft → create) or New Run → run created → observe (fire-and-observe).
+- **Security & scope:** local 127.0.0.1 only · token bootstrap → session · read-first (the only mutating paths are definition editing, projectRoot, eval config, and harness build — whitelisted, atomic, gated off by default; auto-build runs no-tools isolated exec with no auto-apply). History/stats reflect **UI-launched runs only**; terminal CLI runs are out of scope until v0.7 (CLI session-log observability).
+
+### Eval — how each agent/skill is scored (`#/eval`)
+
+The **Eval** screen grades every agent and skill on **four axes** plus **relationship health**. Each axis is 0.0–1.0; the grade is a weighted average — **A ≥ 0.90 · B ≥ 0.75 · C ≥ 0.60 · D < 0.60** — with a **min-gate**: a structural failure (e.g. a 500-line body with zero `references/`) caps the grade at D so a good prose score can't launder a broken structure.
+
+| Axis | What & why it measures | Weight (machine + judgment) |
+|------|------------------------|------------------------------|
+| **Trigger** | *description ROI* — does the description justify its always-on context cost? States (a) what it does, (b) concrete trigger situations, (c) near-miss cases where it must **not** fire. | 0.4 machine + 0.6 judgment |
+| **Structure** | *two-layer architecture* — body keeps only the procedure (≤ 500 lines); conditional/bulky material moved to `references/`. | 0.7 machine + 0.3 judgment |
+| **Induction** | *next-action steering* — imperative voice, "why" rationale, and leading words that clearly steer the agent's next move (vs vague description). | 0.3 machine + 0.7 judgment |
+| **Pruning** | *deletion test [core]* — "if this sentence were deleted, would behavior change?" No = filler. Score = `1 − deletion-candidates / total`. A **completeness guard** protects required sections (trigger conditions · error handling · core constraints) from over-pruning. | machine + conservative judgment |
+
+**Relationship health** (graph signals the four axes can't see): orphans (unwired definitions) · dead links · coverage gaps · drift (skill-copy mismatch) — folded into the score as penalties.
+
+> **Current limitation — read it as advisory.** Only the **static layer** (machine · deterministic · regex/density) is active; confidence is deliberately low (0.45–0.5). The semantic-judgment layer (LLM) and cross-verification are follow-ups. **Nothing is auto-applied** — findings feed the definition editor where a human reviews the diff before saving (or the batch review queue for many at once).
+>
+> Full rubric, weights, and rationale → [`docs/harness-eval/design/eval-v1-design.md`](docs/harness-eval/design/eval-v1-design.md).
+
+**Detailed docs**
+- App package & dev guide → [`harness-ui/README.md`](harness-ui/README.md)
+- Docs hub (design · PRD · acceptance criteria · audit history) → [`docs/harness-ui/`](docs/harness-ui/README.md)
+- v0.6 design (implemented) → [`docs/harness-ui/v0.6/design/design-v0.6.md`](docs/harness-ui/v0.6/design/design-v0.6.md) · PRD → [`docs/harness-ui/v0.6/prd/`](docs/harness-ui/v0.6/prd/)
+- v0.7 plan (CLI session-log observability) → [`docs/harness-ui/v0.7/`](docs/harness-ui/v0.7/)
+
+> A distinct sub-project from the factory: the factory *generates* harnesses; My Harness Web *operates* one (and can auto-build one). Its own version line (v0.5/0.6) is separate from the factory version above.
 
 ## Requirements
 

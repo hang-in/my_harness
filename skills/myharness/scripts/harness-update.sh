@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 빌드된 하네스(생성 산출물)를 팩토리 정본으로 동기화 — 사용자 수정 보존(해시 감지 + propose).
 # 관리 대상 v1(생성 하네스에 실제 번들되는 것만): references/dev-rules.md · references/tdd-doctrine.md
-#   · scripts/check-review-tools.sh · scripts/build-scorecard.sh
+#   · scripts/check-review-tools.sh · scripts/build-scorecard.sh · scripts/check-artifacts.sh
 #   (run-policy-audit.sh·harness-update.sh는 팩토리 전용 — 생성 하네스 비번들 → 관리 제외.)
 #   (에이전트/스킬 본문은 사용자 소유 — 주입 1줄만 절차로 갱신. external-review-loop 스킬은 재생성 경로.)
 #   사용자 추가 정책은 *.local.* 파일로 분리 권장 — 관리 대상에서 제외(절대 안 건드림).
@@ -45,7 +45,7 @@ atomic_cp() {
 }
 
 # 관리 대상 화이트리스트(상대경로) — 생성 하네스에 번들되는 것만.
-MANAGED_RELS="references/dev-rules.md references/tdd-doctrine.md scripts/check-review-tools.sh scripts/build-scorecard.sh"
+MANAGED_RELS="references/dev-rules.md references/tdd-doctrine.md scripts/check-review-tools.sh scripts/build-scorecard.sh scripts/check-artifacts.sh"
 
 # 관리 파일 상대경로 열거(skill_dir에 존재하는 것). .local.* 제외.
 list_managed() {
@@ -80,13 +80,13 @@ manifest_sha() {
 # 오분류되어 자동 덮어쓸 수 있으므로 manifest 명령과 분리한다.
 write_apply_manifest() {
   command -v jq >/dev/null 2>&1 || return 2
-  local tmp="$MANIFEST.tmp.$$" first=1 rel current factory base
-  printf '{"schema_version":"1","factory_version":"%s","files":{' \
-    "$(jq -r '.version // "unknown"' "$FACTORY/../../.claude-plugin/plugin.json" 2>/dev/null || echo unknown)" \
-    > "$tmp" || return 1
+  local tmp="$MANIFEST.tmp.$$" first=1 rel current factory base fac_ver
+  fac_ver="$(jq -r '.version // "unknown"' "$FACTORY/../../.claude-plugin/plugin.json" 2>/dev/null || echo unknown)"
+  printf '{"schema_version":"1","factory_version":"%s","files":{' "$fac_ver" > "$tmp" || { rm -f "$tmp"; return 1; }
 
-  for rel in $MANAGED_RELS; do
-    [ -f "$SKILL_DIR/$rel" ] || continue
+  # canonical `manifest` 와 동일하게 list_managed 를 단일 출처로(.local.* 필터 일관 — 향후 drift 방지).
+  while IFS= read -r rel; do
+    [ -n "$rel" ] || continue
     current="$(sha "$SKILL_DIR/$rel")"
     factory=""
     [ -f "$FACTORY/$rel" ] && factory="$(sha "$FACTORY/$rel")"
@@ -100,11 +100,13 @@ write_apply_manifest() {
 
     [ $first -eq 1 ] && first=0 || printf ',' >> "$tmp"
     printf '"%s":"%s"' "$rel" "$base" >> "$tmp"
-  done
+  done < <(list_managed "$SKILL_DIR")
   printf '}}\n' >> "$tmp"
 
-  if jq . "$tmp" > "$tmp.j" 2>/dev/null; then
-    mv "$tmp.j" "$MANIFEST" && rm -f "$tmp"
+  # 성공·실패 양쪽에서 temp 정리(mv 실패 시 $tmp·$tmp.j leak 방지).
+  if jq . "$tmp" > "$tmp.j" 2>/dev/null && mv "$tmp.j" "$MANIFEST"; then
+    rm -f "$tmp" "$tmp.j"
+    return 0
   else
     rm -f "$tmp" "$tmp.j"
     return 1
@@ -190,7 +192,7 @@ case "$CMD" in
           fi ;;
       esac
     done < <({ list_managed "$SKILL_DIR"; list_factory_new; } | sort -u)
-    # manifest 갱신 — 보류/실패 파일의 기존 기준선은 보존한다.
+    # manifest 갱신: 보류/실패 파일의 기존 기준선은 보존한다.
     if command -v jq >/dev/null 2>&1; then
       if write_apply_manifest; then echo "  manifest 갱신됨"
       else echo "  오류: manifest 갱신 실패" >&2; apply_fail=1; fi

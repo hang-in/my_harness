@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-1.2.0-brightgreen.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.6.3-brightgreen.svg" alt="Version">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/Claude_Code-Plugin-purple.svg" alt="Claude Code Plugin">
   <img src="https://img.shields.io/badge/Runtime-Claude_Code_+_Codex-blueviolet.svg" alt="Dual Runtime">
@@ -246,6 +246,45 @@ myharness는 Claude Code 에이전트 생태계의 **메타 팩토리** 계층 �
 | [coleam00/Archon](https://github.com/coleam00/Archon) | 결정적·반복 가능한 **런타임 구성** 팩토리 | 같은 메타 계층, 다른 하위 영역. Archon=런타임 결정성, myharness=팀 아키텍처. 조합 가능(설계는 myharness → 배포는 Archon) |
 | [LangGraph](https://langchain-ai.github.io/langgraph/) | 상태 그래프 오케스트레이션, LLM 무관 | 다른 트랙. LangGraph=장기 실행·상태 복구, myharness=Claude Code 네이티브 빠른 팀 설계 |
 | [wshobson/agents](https://github.com/wshobson/agents) | 서브에이전트/스킬 카탈로그 | 부품 공급 ↔ 팩토리. 카탈로그에서 부품을 골라 myharness가 설계한 팀에 흡수 |
+
+## 컴패니언: My Harness Web
+
+빌드된 하네스를 **관찰·통제**하는 로컬 웹 앱. `_workspace/runs/**` 파일 상태를 읽어 인벤토리·실행·이력·문서·드리프트·평가·하네스 구성을 한 화면에 모읍니다 — CLI로는 한눈에 안 보이는 것들. 도메인 한 문장으로 **하네스 전체를 자동 빌드**하기도 합니다(초안 → 사람 검토 → create).
+
+- **실행:** `cd harness-ui && npm install && npm start` — 빌드 후 `127.0.0.1:5174` 단일 오리진 서빙, 1회용(fragment) 토큰 링크로 브라우저 오픈. 개발: `npm run dev`.
+- **기능(wave별, 전부 구현·라이브 · harness-web 0.9.0):**
+  - **v0.5 코어** — supervisor · OS 어댑터 · 보안 · 런처(certified).
+  - **v0.6** — F2 프리필 New Run · F3 projectRoot 편집 · F4 이력 · F5 문서/artifact 뷰어 · F6 관측성 · F7 정의 편집기 · F8 Eval 대시보드 · F9 Docs 소스 · F10 하네스 컨텍스트.
+  - **v0.7–v0.8 멀티런타임** — F11 팩토리 유지관리 · F12 런타임 어댑터 레지스트리 · F13 멀티런타임 읽기 · F14 Gemini md 편집 · F15 Codex TOML 편집(strict parse · injection-safe) · F16 트리런타임 스킬 동기 · F17 설치 매트릭스(agy 4-state 인증). claude/codex/gemini 하네스를 한 도구에서 관리.
+  - **v0.9** — **Eval v1**(4축 산출물 채점, 아래 참조) + **배치 반영(M-y)**: `#/eval` 지적을 여러 정의에 AI 초안으로 → 검토 큐 → 일괄 적용, 전역 run 거버너로 상한. 각 중대 마일스톤은 외부감사(codex + agy, no-high 2연속)로 수렴.
+  - 그리고 **config-centric 자기평가**(harness_scorecard · 채택단계 게이트)와 **하네스 전체 자동빌드**.
+- **화면(11 · 그룹 사이드바):** Overview · **Harness** / Agents / Skills / Context / History · Docs · Runs / Drift / Ops / Eval · Settings. 흐름: 도메인 → Harness 자동빌드(초안 → create) 또는 New Run → run 생성 → 관찰(fire-and-observe).
+- **보안·범위:** 로컬 127.0.0.1 전용 · 토큰 bootstrap → 세션 · 읽기 우선(mutating은 정의 편집·projectRoot·평가 config·하네스 빌드뿐 — 화이트리스트·원자·기본 off 게이트, 자동빌드는 no-tools isolated exec + no-auto-apply). 이력·통계는 **UI로 실행한 run만** 반영, 터미널 CLI 실행은 v0.7(CLI 세션 로그 관측)까지 범위 밖.
+
+### Eval — 각 에이전트/스킬을 어떻게 채점하나 (`#/eval`)
+
+**Eval** 화면은 모든 에이전트·스킬을 **4축** + **관계 건강도**로 채점합니다. 각 축은 0.0–1.0이며, 등급은 가중 평균 — **A ≥ 0.90 · B ≥ 0.75 · C ≥ 0.60 · D < 0.60** — 에 **min-gate**를 겁니다: 구조적 과락(예: 500줄 본문에 `references/` 0개)이면 등급을 D로 상한 처리해, 좋은 산문 점수로 깨진 구조를 세탁하지 못하게 합니다.
+
+| 축 | 무엇을·왜 재나 | 가중치(기계 + 판정) |
+|------|------------------------|------------------------------|
+| **트리거** | *description ROI* — description이 상시 컨텍스트 비용을 정당화하나? (a) 하는 일, (b) 구체적 트리거 상황, (c) 발동하면 **안 되는** near-miss 경우를 밝힘. | 0.4 기계 + 0.6 판정 |
+| **구조** | *2계층 아키텍처* — 본문은 절차만 유지(≤ 500줄), 조건부·부피 큰 자료는 `references/`로 이동. | 0.7 기계 + 0.3 판정 |
+| **유도** | *다음 행동 유도* — 명령형 어조, "왜" 근거, 에이전트의 다음 행동을 분명히 이끄는 leading words(모호한 서술 대비). | 0.3 기계 + 0.7 판정 |
+| **가지치기** | *삭제 테스트 [핵심]* — "이 문장을 지우면 동작이 바뀌나?" 아니오 = 군더더기. 점수 = `1 − deletion-candidates / total`. **완전성 가드**가 필수 섹션(트리거 조건 · 에러 핸들링 · 핵심 제약)을 과-축약으로부터 보호. | 기계 + 보수적 판정 |
+
+**관계 건강도**(4축이 못 보는 그래프 신호): 고아(미배선 정의) · 죽은 링크 · 커버리지 공백 · 드리프트(스킬 복제본 불일치) — 페널티로 점수에 접힙니다.
+
+> **현재 한계 — 참고(advisory)로 읽으세요.** **정적 계층**(기계 · 결정론 · 정규식/밀도)만 active이며, confidence는 의도적으로 낮게(0.45–0.5) 잡혀 있습니다. 의미 판정 계층(LLM)과 교차 검증은 후속입니다. **자동 적용되는 것은 없습니다** — findings는 정의 편집기로 흘러가 사람이 diff를 검토한 뒤 저장합니다(다수는 배치 검토 큐로).
+>
+> 전체 rubric·가중치·근거 → [`docs/harness-eval/design/eval-v1-design.md`](docs/harness-eval/design/eval-v1-design.md).
+
+**상세 문서**
+- 앱 패키지·개발 가이드 → [`harness-ui/README.md`](harness-ui/README.md)
+- 문서 허브(설계 · PRD · 수용기준 · 감사 이력) → [`docs/harness-ui/`](docs/harness-ui/README.md)
+- v0.6 설계(구현 완료) → [`docs/harness-ui/v0.6/design/design-v0.6.md`](docs/harness-ui/v0.6/design/design-v0.6.md) · PRD → [`docs/harness-ui/v0.6/prd/`](docs/harness-ui/v0.6/prd/)
+- v0.7 기획(CLI 세션 로그 관측) → [`docs/harness-ui/v0.7/`](docs/harness-ui/v0.7/)
+
+> 팩토리와 구분되는 하위 프로젝트: 팩토리는 하네스를 *생성*하고, My Harness Web은 하나를 *운영*합니다(자동 빌드도 가능). 자체 버전 라인(v0.5/0.6)은 위 팩토리 버전과 별개입니다.
 
 ## 요구사항
 

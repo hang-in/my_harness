@@ -11,7 +11,7 @@
 | **코드/설계 — 중대**(계약·비가역·다도메인) | + 단계마다 외부 리뷰 + 승인 사다리 + scorecard 로깅 | 자동 채택(실험적) |
 > 기본은 **슬림**. 위 표의 "반드시"만 하고, 나머지는 리스크가 올라갈 때 추가. 단순 하네스에 외부리뷰/교리/평가를 강제하지 말 것.
 >
-> **문서 체계(D4 코어):** 산출물을 `docs/{project}/`(영속·커밋) vs `_workspace/`(휘발) 2층으로. 무게는 티어로 — 기본 경량(T0 `_workspace`만 / Tμ commit digest), 단발 표준=T1 결과서 1장, 단계형/영속화 요청=T2(보류). 외부 도구와 무관(도구 없으면 내부 QA). 상세: `orchestrator-template.md` 문서 체계.
+> **문서 체계(D4 코어):** 산출물을 `docs/{project}/`(영속·커밋) vs `_workspace/`(휘발) 2층으로. 무게는 티어로 — 기본 경량(T0 `_workspace`만 / Tμ commit digest), 단발 표준=T1 결과서 1장, 단계형/영속화 요청=T2(보류). **강제장치:** `check-artifacts.sh`+`pre-commit` hook이 결과서 방치를 물리 차단(프롬프트 아님). 외부 도구와 무관(도구 없으면 내부 QA). 상세: `orchestrator-template.md` 문서 체계.
 
 ## 2. 구현 상태 (정책 ≠ 실행 — 약속과 현실 구분)
 | 기능 | 상태 | 비고 |
@@ -22,7 +22,8 @@
 | `build-scorecard.sh`(loop_scorecard) | ✅ active (측정 로깅만) | 1단계. 자동 환류 없음 |
 | `run-policy-audit.sh`(팩토리 레포 정책 감사) | ✅ active | 정적·읽기전용. **팩토리 레포 자체만**(생성 하네스 아님). Phase 7-5 Step 4. warn≠block |
 | 문서 체계 D4 코어(docs/_workspace 2층·T0/Tμ/T1·git-staging promote·fail-fast·RAG 최신1개) | ✅ active | 외부감사 3회 수렴. 외부 도구 무관 |
-| 문서 체계 D4 2단계(T2 full·main_todolist+단계plan·병렬 merge·동적 격상) | 📐 **설계 승인·미구현** | 미검증 발명 보류. 코어 안정화 후 |
+| `check-artifacts.sh` + pre-commit hook(결과서 방치 물리 차단·grep 검증) | ✅ active | 강제장치. L2 mock A/B 6/6 PASS. 티어 독립(T0/Tμ 무마찰). 프롬프트 아닌 런타임 |
+| 문서 체계 D4 2단계(T2 full·main_todolist+단계plan·병렬 merge·동적 격상) | 📐 **설계 승인·미구현** | 미검증 발명 보류. 코어 안정화 후. (T2-lite 구조=외부감사 기각) |
 | loop-self-eval 단계 3·4(제안·자동 환류) | 🧪 **실험적·비활성** | 데이터·holdout 후 |
 | self-improvement-loop | 📐 **설계만** | `run-benchmark.sh` **미구현** → 현재 실행 불가 |
 > 🧪/📐 기능은 **생성된 하네스가 자동 실행하지 않는다**. "있다고 적힌" 것 ≠ "돈다". MVP 전까지 설계 참조용.

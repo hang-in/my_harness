@@ -1,0 +1,43 @@
+{
+  "name": "harness-ui",
+  "private": true,
+  "version": "0.9.0",
+  "type": "module",
+  "scripts": {
+    "start": "npm run build && tsx src/server/start.ts",
+    "dev": "concurrently \"npm:dev:web\" \"npm:dev:server\"",
+    "dev:web": "vite --host 127.0.0.1 --port 5273",
+    "dev:server": "PORT=5274 tsx watch src/server/index.ts",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:def-differential": "vitest run test/defedit.differential.test.ts",
+    "e2e": "tsx test/e2e.mjs",
+    "build:scorecard-cli": "esbuild src/server/adapters/scorecard-cli.ts --bundle --platform=node --format=esm --outfile=scripts/harness-scorecard.mjs",
+    "postinstall": "node scripts/install-myharness.mjs",
+    "install:myharness": "node scripts/install-myharness.mjs"
+  },
+  "dependencies": {
+    "@iarna/toml": "^2.2.5",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "dompurify": "3.4.11",
+    "fastify": "^5.2.0",
+    "markdown-it": "14.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "yaml": "2.7.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/iarna__toml": "^2.0.5",
+    "@types/markdown-it": "14.1.2",
+    "@types/node": "^26.1.1",
+    "@vitejs/plugin-react": "^4.7.0",
+    "concurrently": "^10.0.3",
+    "jsdom": "25.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

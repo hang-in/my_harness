@@ -42,7 +42,9 @@ if grep -rqE $SELF 'revfactory' $prod 2>/dev/null; then wn "revfactory 잔존 (s
 if grep -rnE $SELF '\[\[(dev-rules|tdd-doctrine)\]\].*준수' $SK 2>/dev/null | grep -q .; then no "[[ ]] 주입 지시 잔존 (서브에이전트 미해소 — 실경로로)"; else ok "[[ ]] 주입 지시 0 (실경로화)"; fi
 # 구 스킬 경로
 if grep -rqE $SELF 'skills/harness\b' $SK README*.md 2>/dev/null; then no "stale 'skills/harness' 잔존 (skills/myharness 여야)"; else ok "구 'skills/harness' 경로 0"; fi
-if grep -rqE $SELF 'skills/my-harness\b' $prod 2>/dev/null; then no "stale 'skills/my-harness' 잔존 (skills/myharness 여야)"; else ok "구 'skills/my-harness' 경로 0"; fi
+# 변경 이력의 날짜 행(`| 2026-…`)은 당시 상태를 적은 사료이므로 stale 포인터로 보지 않는다.
+# 사료까지 고치면 이력이 거짓이 된다 — 살아있는 포인터만 검사 대상이다.
+if grep -rhE $SELF 'skills/my-harness\b' $prod 2>/dev/null | grep -qvE '^\| [0-9]{4}-[0-9]{2}-[0-9]{2} \|'; then no "stale 'skills/my-harness' 잔존 (skills/myharness 여야)"; else ok "구 'skills/my-harness' 경로 0 (변경 이력 사료 제외)"; fi
 
 # 6) 버전 정합 — plugin = marketplace = README 3종 뱃지 = CHANGELOG 최신
 pv=$(grep -m1 '"version"' .claude-plugin/plugin.json | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')

@@ -1,0 +1,5 @@
+{"seq":0,"ts":"2026-07-09T10:00:00+09:00","level":"info","agent":null,"skill":null,"phase":"init","event":"run_started","message":"start","usage":null}
+{"seq":1,"ts":"2026-07-09T10:00:05+09:00","level":"info","agent":"builder","skill":"external-review-loop","phase":"plan","event":"skill_invoked","message":"review loop","usage":{"inputTokens":1200,"outputTokens":800,"cacheReadTokens":5000,"cacheCreationTokens":0}}
+{"seq":2,"ts":"2026-07-09T10:00:20+09:00","level":"info","agent":"builder","skill":null,"phase":"build","event":"token_count","message":"codex TokenCount","usage":{"inputTokens":3400,"outputTokens":2600,"cacheReadTokens":0,"cacheCreationTokens":0}}
+{"seq":3,"ts":"2026-07-09T10:00:40+09:00","level":"info","agent":"reviewer","skill":null,"phase":"review","event":"review_round","message":"round 1","usage":{"inputTokens":900,"outputTokens":300}}
+{"seq":4,"ts":"2026-07-09T10:01:00+09:00","level":"info","agent":"builder","skill":null,"phase":"done","event":"run_completed","message":"ok","usage":{"outputTokens":100}}

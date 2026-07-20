@@ -13,3 +13,4 @@
 !.claude/skills/external-review-loop/**
 .omc/
 _workspace/
+.playwright*
