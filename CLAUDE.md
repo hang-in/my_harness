@@ -21,4 +21,16 @@
 - Codex: `AGENTS.md`, `.agents/skills/`, `.codex/agents/*.toml`, 네이티브 subagents 또는 `codex exec`.
 - 상세 매핑과 제한은 `skills/myharness/references/runtime-adapters.md`를 단일 출처로 사용한다.
 
+## 이 저장소 유지보수 하네스
+
+- 팩토리 정책·스크립트·듀얼 런타임 문서를 변경하거나 감사할 때 `.claude/skills/harness-factory-orchestrator/SKILL.md`를 따른다.
+- 주 실행 런타임은 Codex다. Claude Code에서 이 하네스를 열 때는 호환 정의를 사용할 수 있지만, 표준·중대 변경의 외부 독립 리뷰 역할이 우선이다.
+- Codex 러너의 외부 리뷰어는 Claude Code와 agy이며, 같은 러너 엔진인 Codex를 리뷰어로 다시 호출하지 않는다.
+
+## 변경 이력
+
+| 날짜 | 변경 내용 | 사유 |
+|------|----------|------|
+| 2026-06-27 | 저장소 유지보수 하네스 포인터와 외부 리뷰 역할 추가 | Codex 실행과 Claude Code·agy 독립 검증의 책임 분리 |
+
 릴리스 이력은 `CHANGELOG.md`를 참조한다.
