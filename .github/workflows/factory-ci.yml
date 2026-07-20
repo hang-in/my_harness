@@ -4,6 +4,9 @@ name: factory-ci
 
 on:
   push:
+    # GitHub Actions 는 태그 push 에 paths 필터를 평가하지 않는다 — 명시하지 않으면
+    # 모든 릴리스 태그에서 Linux/Windows 잡이 전건 실행된다(비용·실패 표면 증가).
+    tags-ignore: ["**"]
     paths:
       - "skills/**"
       - "tests/**"
@@ -11,6 +14,20 @@ on:
       - "install.ps1"
       - ".claude-plugin/**"
       - ".github/workflows/factory-ci.yml"
+      # 정책 감사가 버전 정합·진입점·문서 경로를 이 파일들에서 검사하므로 트리거에 포함해야 한다.
+      # 빠지면 버전 텍스트만 틀린 커밋이 CI 를 통과한다.
+      - "README*.md"
+      - "CHANGELOG.md"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "CONTRIBUTING.md"
+      - ".gitattributes"
+      # 자가호스팅 하네스 산출물과 allowlist 도 감사 대상이다.
+      # 이것만 바뀐 PR 이 CI 를 전혀 안 거치던 구멍을 막는다.
+      - ".gitignore"
+      - ".claude/**"
+      - ".codex/**"
+      - ".agents/**"
   pull_request:
     paths:
       - "skills/**"
@@ -19,6 +36,20 @@ on:
       - "install.ps1"
       - ".claude-plugin/**"
       - ".github/workflows/factory-ci.yml"
+      # 정책 감사가 버전 정합·진입점·문서 경로를 이 파일들에서 검사하므로 트리거에 포함해야 한다.
+      # 빠지면 버전 텍스트만 틀린 커밋이 CI 를 통과한다.
+      - "README*.md"
+      - "CHANGELOG.md"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "CONTRIBUTING.md"
+      - ".gitattributes"
+      # 자가호스팅 하네스 산출물과 allowlist 도 감사 대상이다.
+      # 이것만 바뀐 PR 이 CI 를 전혀 안 거치던 구멍을 막는다.
+      - ".gitignore"
+      - ".claude/**"
+      - ".codex/**"
+      - ".agents/**"
   workflow_dispatch:
 
 permissions:

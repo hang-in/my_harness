@@ -2,3 +2,6 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 *.ps1 text eol=lf
+# 하네스 매니페스트는 스크립트가 생성하므로 Windows 에서 CRLF 로 써질 수 있다.
+# 그대로 커밋되면 `git diff --check` 가 전 행을 trailing whitespace 로 보고해 게이트가 깨진다.
+.harness-manifest.json text eol=lf

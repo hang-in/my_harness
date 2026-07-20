@@ -1,7 +1,7 @@
 # Codex Session Handoff
 
-작성일: 2026-06-27  
-다음 세션 시작 위치: `D:\folkProject\my_harness`
+- 작성일: 2026-06-27
+- 다음 세션 시작 위치: `D:\folkProject\my_harness`
 
 ## 새 세션에서 가장 먼저 할 일
 

@@ -38,13 +38,35 @@ else ok ".claude/commands 미생성"; fi
 SELF='--exclude=run-policy-audit.sh'
 prod="$SK README.md README_KO.md README_JA.md .claude-plugin/plugin.json .claude-plugin/marketplace.json AGENTS.md CLAUDE.md CONTRIBUTING.md install.sh install.ps1"
 if grep -rqE $SELF 'revfactory' $prod 2>/dev/null; then wn "revfactory 잔존 (sibling repo 의도면 무시)"; else ok "revfactory 잔존 0 (제품 파일)"; fi
+# grep 종료코드 규약: 0=매치, 1=매치없음, 2+=실제 오류(경로 없음·권한·I/O).
+# `|| true` 로 뭉치면 exit 2 가 "매치 없음"으로 위장돼 감사가 조용히 PASS 한다.
+# 아래 헬퍼는 2+ 를 별도 보고하고 표준출력은 그대로 돌려준다.
+#
+# `… | grep -q` 금지(req): set -o pipefail 아래서 -q 가 첫 매치에 조기 종료하면 왼쪽 grep 이
+# SIGPIPE(141)로 죽고, pipefail 이 그 141 을 파이프라인 종료코드로 올려 if 가 거짓이 된다.
+# = 위반이 실재하는데 else(정상) 로 빠지는 미탐. 출력이 작을 땐 재현되지 않아 더 위험하다.
+# 변수 포획은 조기 종료가 없어 이 경합 자체가 성립하지 않는다.
+# 커맨드 치환은 서브셸이라 이 안에서 wn 을 부르면 경고 문구가 출력 대신 변수에 캡처되고
+# warn 카운터 증가도 소실된다(= 엉뚱한 FAIL). 그래서 rc 를 마커로 붙여 함께 회수하고,
+# 보고는 반드시 바깥에서 한다. grep 을 두 번 돌리지 않으려는 목적도 있다.
+RS=$(printf '\036')
+grep_run() { grep "$@" 2>/dev/null; printf '%s%s' "$RS" "$?"; }
+g_out() { printf '%s' "${1%$RS*}"; }
+g_rc()  { printf '%s' "${1##*$RS}"; }
+
 # [[ ]] 주입 지시 (실경로여야 함) — 경고문 제외하고 '준수' 패턴만
-if grep -rnE $SELF '\[\[(dev-rules|tdd-doctrine)\]\].*준수' $SK 2>/dev/null | grep -q .; then no "[[ ]] 주입 지시 잔존 (서브에이전트 미해소 — 실경로로)"; else ok "[[ ]] 주입 지시 0 (실경로화)"; fi
+_r="$(grep_run -rnE $SELF '\[\[(dev-rules|tdd-doctrine)\]\].*준수' $SK)"
+[ "$(g_rc "$_r")" -ge 2 ] && wn "grep 오류(exit $(g_rc "$_r")) — [[ ]] 주입 지시 검사 신뢰 불가"
+inject_stale="$(g_out "$_r")"
+if [ -n "$inject_stale" ]; then no "[[ ]] 주입 지시 잔존 (서브에이전트 미해소 — 실경로로)"; else ok "[[ ]] 주입 지시 0 (실경로화)"; fi
 # 구 스킬 경로
 if grep -rqE $SELF 'skills/harness\b' $SK README*.md 2>/dev/null; then no "stale 'skills/harness' 잔존 (skills/myharness 여야)"; else ok "구 'skills/harness' 경로 0"; fi
 # 변경 이력의 날짜 행(`| 2026-…`)은 당시 상태를 적은 사료이므로 stale 포인터로 보지 않는다.
 # 사료까지 고치면 이력이 거짓이 된다 — 살아있는 포인터만 검사 대상이다.
-if grep -rhE $SELF 'skills/my-harness\b' $prod 2>/dev/null | grep -qvE '^\| [0-9]{4}-[0-9]{2}-[0-9]{2} \|'; then no "stale 'skills/my-harness' 잔존 (skills/myharness 여야)"; else ok "구 'skills/my-harness' 경로 0 (변경 이력 사료 제외)"; fi
+_r="$(grep_run -rhE $SELF 'skills/my-harness\b' $prod)"
+[ "$(g_rc "$_r")" -ge 2 ] && wn "grep 오류(exit $(g_rc "$_r")) — stale 'skills/my-harness' 검사 신뢰 불가"
+stale_myharness="$(g_out "$_r" | grep -vE '^\| [0-9]{4}-[0-9]{2}-[0-9]{2} \|')"
+if [ -n "$stale_myharness" ]; then no "stale 'skills/my-harness' 잔존 (skills/myharness 여야)"; else ok "구 'skills/my-harness' 경로 0 (변경 이력 사료 제외)"; fi
 
 # 6) 버전 정합 — plugin = marketplace = README 3종 뱃지 = CHANGELOG 최신
 pv=$(grep -m1 '"version"' .claude-plugin/plugin.json | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
