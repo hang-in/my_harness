@@ -1,0 +1,8 @@
+{
+  "schema_version": "1",
+  "factory_version": "unknown",
+  "files": {
+    "scripts/check-review-tools.sh": "bdf96cd101d9c281cfcb3942fec07cc6a873a5bd0ed4be4f3a6780568fa0e9a3",
+    "scripts/build-scorecard.sh": "7517bca29456a7459d1383fa10521f28eb8e4d30fd23d0d657d115c0cc11ab24"
+  }
+}
