@@ -4,8 +4,12 @@ name: factory-ci
 
 on:
   push:
-    # GitHub Actions 는 태그 push 에 paths 필터를 평가하지 않는다 — 명시하지 않으면
-    # 모든 릴리스 태그에서 Linux/Windows 잡이 전건 실행된다(비용·실패 표면 증가).
+    # branches 와 tags-ignore 를 함께 선언해야 한다(req).
+    # GitHub 규약: "If you define only tags/tags-ignore or only branches/branches-ignore,
+    # the workflow won't run for events affecting the undefined Git ref."
+    # 즉 tags-ignore 만 두면 브랜치 push 검증이 통째로 사라진다.
+    # 태그를 제외하는 이유는 태그 push 에 paths 필터가 평가되지 않아 전건 실행되기 때문이다.
+    branches: ["**"]
     tags-ignore: ["**"]
     paths:
       - "skills/**"
@@ -14,8 +18,9 @@ on:
       - "install.ps1"
       - ".claude-plugin/**"
       - ".github/workflows/factory-ci.yml"
-      # 정책 감사가 버전 정합·진입점·문서 경로를 이 파일들에서 검사하므로 트리거에 포함해야 한다.
-      # 빠지면 버전 텍스트만 틀린 커밋이 CI 를 통과한다.
+      # 정책 감사가 직접 읽는 대상: README 3종·CHANGELOG(버전 정합), AGENTS.md·CLAUDE.md(진입점),
+      # CONTRIBUTING.md(명령 경로), .gitattributes(LF 정책), .claude/commands(생성 금지 원칙).
+      - ".claude/commands/**"
       - "README*.md"
       - "CHANGELOG.md"
       - "AGENTS.md"
@@ -36,8 +41,9 @@ on:
       - "install.ps1"
       - ".claude-plugin/**"
       - ".github/workflows/factory-ci.yml"
-      # 정책 감사가 버전 정합·진입점·문서 경로를 이 파일들에서 검사하므로 트리거에 포함해야 한다.
-      # 빠지면 버전 텍스트만 틀린 커밋이 CI 를 통과한다.
+      # 정책 감사가 직접 읽는 대상: README 3종·CHANGELOG(버전 정합), AGENTS.md·CLAUDE.md(진입점),
+      # CONTRIBUTING.md(명령 경로), .gitattributes(LF 정책), .claude/commands(생성 금지 원칙).
+      - ".claude/commands/**"
       - "README*.md"
       - "CHANGELOG.md"
       - "AGENTS.md"
